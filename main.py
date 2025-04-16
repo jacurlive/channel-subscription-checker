@@ -143,27 +143,54 @@ async def callback_done(callback: types.CallbackQuery):
 async def get_video_by_code(message: types.Message):
     code = message.text
     result = get_video(code)
+    user_id = message.from_user.id
+    answer = await is_subscribed(user_id=user_id)
 
-    if result:
-        file_path = result[0]
 
-        # Check if the file exists
-        if os.path.exists(file_path):
+    if answer:
+        if result:
+            file_path = result[0]
 
-            try:
-                # Pass the file path directly to InputFile
-                file = FSInputFile(file_path, filename=os.path.basename(file_path))
-                await message.answer_document(file)  # Send the file
+            # Check if the file exists
+            if os.path.exists(file_path):
 
-            except Exception as e:
-                print(f"Error sending file: {e}")
-                await message.answer("An error occurred while sending the video. Please try again later.")
+                try:
+                    # Pass the file path directly to InputFile
+                    file = FSInputFile(file_path, filename=os.path.basename(file_path))
+                    await message.answer_document(file)  # Send the file
+
+                except Exception as e:
+                    print(f"Error sending file: {e}")
+                    await message.answer("An error occurred while sending the video. Please try again later.")
+
+            else:
+                await message.answer("The video file could not be found. Please contact the administrator.")
 
         else:
-            await message.answer("The video file could not be found. Please contact the administrator.")
+            await message.answer("No video found with this code.")
 
     else:
-        await message.answer("No video found with this code.")
+        channel_number = 1
+        keyboards = []
+        for channel in REQUIRED_CHANNELS:
+            button = InlineKeyboardButton(
+                text=f"{channel_number}. Kanal",
+                url=f"https://t.me/{channel.lstrip('@')}"
+            )
+            keyboards.append([button])
+            channel_number += 1
+
+        button = InlineKeyboardButton(
+            text="Done",
+            callback_data="done"
+        )
+        keyboards.append([button])
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboards)
+
+        await message.answer(
+            "You are not subscribed to the required channels. Please subscribe to continue.",
+            reply_markup=keyboard
+        )
 
 
 # This function is triggered when a user sends the /addvideo command.
@@ -175,7 +202,7 @@ async def add_video_command(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         await message.answer("You are not authorized to use this command.")
         return
-    
+
     await state.set_state(AddVideo.waiting_code)
     await message.answer("Please send the film code:")
 
