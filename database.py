@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 
 # This function initializes the SQLite database and creates a table for storing video information.
@@ -45,3 +46,54 @@ def get_video(code: str):
     result = cursor.fetchone()
     conn.close()
     return result
+
+
+def init_user_table():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE NOT NULL,
+            full_name TEXT,
+            username TEXT,
+            created_at TEXT,
+            is_active BOOLEAN DEFAULT 1
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def add_user(user_id: int, full_name: str, username: str) -> bool:
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    exists = cursor.fetchone()
+
+    if not exists:
+        cursor.execute("""
+            INSERT INTO users (user_id, full_name, username, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, full_name, username, datetime.now().isoformat()))
+
+        conn.commit()
+        conn.close()
+        return True
+    else:
+        conn.close()
+        return False
+
+
+def get_all_users():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users")
+    users = cursor.fetchall()
+
+    conn.close()
+    
+    return users

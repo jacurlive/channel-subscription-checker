@@ -9,7 +9,7 @@ from aiogram.filters.command import CommandStart, Command
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
-from database import init_video_table, add_video, get_video
+from database import init_video_table, add_video, get_video, add_user, init_user_table, get_all_users
 
 
 # Turn on logging.
@@ -20,6 +20,10 @@ logging.basicConfig(level=logging.INFO)
 # Initialize the database
 # and create the video table if it doesn't exist
 init_video_table()
+
+# Initialize the user table
+# and create it if it doesn't exist
+init_user_table()
 
 # Initilization of bot and dispatcher
 # The bot token is used to authenticate the bot with Telegram API
@@ -67,10 +71,14 @@ async def is_subscribed(user_id: int) -> bool:
 @dp.message(CommandStart())
 async def start(message: types.Message):
     user_id = message.from_user.id
+    full_name = message.from_user.full_name
+    username = message.from_user.username
     answer = await is_subscribed(user_id=user_id)
+    add_user(user_id, full_name, username)
 
     if answer:
-        await message.answer(f"Hi {message.from_user.full_name}! Welcome to the bot.")
+        await message.answer(f"Hi {message.from_user.full_name}! Welcome, type film code:")
+
     else:
         channel_number = 1
         keyboards = []
@@ -131,6 +139,35 @@ async def callback_done(callback: types.CallbackQuery):
                 "You are not subscribed to the required channels. Please subscribe to continue.",
                 reply_markup=keyboard
             )
+
+
+@dp.message(Command("users"))
+async def list_users(message: types.Message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        await message.answer("You don't have permission.")
+        return
+    
+    users = get_all_users()
+    if not users:
+        await message.answer("No user's.")
+        return
+    
+    text_lines = []
+    for user in users:
+        _, user_id, full_name, username, created_at, is_active = user
+        username_text = f"@{username}" if username else "no username"
+        status = "Active" if is_active else "not active"
+        text_lines.append(f"{status} {full_name} ({username_text}) - ID: {user_id}")
+    
+    full_text = "\n".join(text_lines)
+
+    if len(full_text) > 4000:
+        await message.answer("So many information for one message!")
+    
+    else:
+        await message.answer(full_text)
+
 
 # This function is triggered when a user sends a message with a film code.
 # It retrieves the video associated with the code from the database.
