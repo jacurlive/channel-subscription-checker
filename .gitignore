@@ -4,3 +4,4 @@ __pycache__/
 videos/
 *.sqlite3
 *.db
+.env

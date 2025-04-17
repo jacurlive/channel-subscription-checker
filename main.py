@@ -9,6 +9,7 @@ from aiogram.filters.command import CommandStart, Command
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
+from config import TOKEN, ADMIN_ID
 from database import init_video_table, add_video, get_video, add_user, init_user_table, get_all_users
 
 
@@ -27,7 +28,6 @@ init_user_table()
 
 # Initilization of bot and dispatcher
 # The bot token is used to authenticate the bot with Telegram API
-TOKEN = "5958656077:AAH9O2c-s7wFDnNNPiQ74VmAiBbDSmV35Lg"
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot=bot)
 
@@ -35,9 +35,6 @@ dp = Dispatcher(bot=bot)
 # This list contains the usernames of channels that users must subscribe to
 # before using the bot.
 REQUIRED_CHANNELS = ["@testforbottttttt"]
-
-# Admin ID
-ADMIN_ID = 819233688
 
 
 # This class defines the states for the bot's conversation.
@@ -147,24 +144,24 @@ async def list_users(message: types.Message):
     if user_id != ADMIN_ID:
         await message.answer("You don't have permission.")
         return
-    
+
     users = get_all_users()
     if not users:
         await message.answer("No user's.")
         return
-    
+
     text_lines = []
     for user in users:
         _, user_id, full_name, username, created_at, is_active = user
         username_text = f"@{username}" if username else "no username"
         status = "Active" if is_active else "not active"
         text_lines.append(f"{status} {full_name} ({username_text}) - ID: {user_id}")
-    
+
     full_text = "\n".join(text_lines)
 
     if len(full_text) > 4000:
         await message.answer("So many information for one message!")
-    
+
     else:
         await message.answer(full_text)
 
