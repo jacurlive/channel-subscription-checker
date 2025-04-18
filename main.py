@@ -6,10 +6,10 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types.input_file import FSInputFile
 from aiogram.filters.command import CommandStart, Command
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
 from config import TOKEN, ADMIN_ID
+from state import AddVideo, MessageForAll
 from database import init_video_table, add_video, get_video, add_user, init_user_table, get_all_users
 
 
@@ -35,12 +35,6 @@ dp = Dispatcher(bot=bot)
 # This list contains the usernames of channels that users must subscribe to
 # before using the bot.
 REQUIRED_CHANNELS = ["@testforbottttttt"]
-
-
-# This class defines the states for the bot's conversation.
-class AddVideo(StatesGroup):
-    waiting_code = State()
-    waiting_video = State()
 
 
 # Subscribtion checker
@@ -138,6 +132,10 @@ async def callback_done(callback: types.CallbackQuery):
             )
 
 
+# This function is triggered when the user sends the /users command.
+# It checks if the user is an admin (using the ADMIN_ID).
+# If the user is an admin, it retrieves all users from the database
+# and sends a list of users with their status (active or not active).
 @dp.message(Command("users"))
 async def list_users(message: types.Message):
     user_id = message.from_user.id
@@ -164,6 +162,53 @@ async def list_users(message: types.Message):
 
     else:
         await message.answer(full_text)
+
+
+# This function is triggered when the user sends the /messageforall command.
+# It checks if the user is an admin (using the ADMIN_ID).
+# If the user is an admin, it sets the state to waiting_message
+# and asks the user to send the message to all users.
+@dp.message(Command("messageforall"))
+async def message_all_users(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("You are not authorized to use this command.")
+        return
+    
+    await message.answer("Please send the message to all users:")
+    await state.set_state(MessageForAll.waiting_message)
+
+
+# This function is triggered when the user sends a message to all users.
+# It retrieves all users from the database and sends the message to each user.
+# If the message is sent successfully, it sends a confirmation message.
+# If the message fails to send, it sends a failure message.
+@dp.message(MessageForAll.waiting_message)
+async def send_message_to_all_users(message: types.Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("You are not authorized to use this command.")
+        return
+
+    users = get_all_users()
+    sent = 0
+    failed = 0
+
+    if not users:
+        await message.answer("No users found.")
+        return
+
+    for user in users:
+        user_id = user[1]
+
+        try:
+            await message.copy_to(chat_id=user_id)
+            sent += 1
+        except Exception as e:
+            print(f"Error sending message to user {user_id}: {e}")
+            await message.answer(f"Failed to send message to user {user_id}.")
+            failed += 1
+    
+    await message.answer(f"Message sent to {sent} users.\nFailed to send message to {failed} users.")
+    await state.clear()
 
 
 # This function is triggered when a user sends a message with a film code.
