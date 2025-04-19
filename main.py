@@ -3,7 +3,7 @@ import asyncio
 import os
 
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import InputFile, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types.input_file import FSInputFile
 from aiogram.filters.command import CommandStart, Command
 from aiogram.fsm.context import FSMContext
@@ -68,7 +68,7 @@ async def start(message: types.Message):
     add_user(user_id, full_name, username)
 
     if answer:
-        await message.answer(f"Hi {message.from_user.full_name}! Welcome, type film code:")
+        await message.answer(f"Привет {message.from_user.full_name}! Напиши код фильма:")
 
     else:
         channel_number = 1
@@ -89,7 +89,7 @@ async def start(message: types.Message):
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyboards)
 
         await message.answer(
-            "You are not subscribed to the required channels. Please subscribe to continue.",
+            "Для использования бота необходимо подписаться на каналы. Пожалуйста, подпишитесь на каналы ниже:",
             reply_markup=keyboard
         )
 
@@ -107,27 +107,27 @@ async def callback_done(callback: types.CallbackQuery):
 
     if callback_data == "done":
         if answer:
-            await callback.message.answer("Welcome! Type film code:")
+            await callback.message.answer("Напишите код фильма:")
         else:
             channel_number = 1
             keyboards = []
             for channel in REQUIRED_CHANNELS:
                 button = InlineKeyboardButton(
-                    text=f"{channel_number}. Kanal",
+                    text=f"{channel_number}. Канал",
                     url=f"https://t.me/{channel.lstrip('@')}"
                 )
                 keyboards.append([button])
                 channel_number += 1
 
             button = InlineKeyboardButton(
-                text="Done",
+                text="Потвердить✅",
                 callback_data="done"
             )
             keyboards.append([button])
             keyboard = InlineKeyboardMarkup(inline_keyboard=keyboards)
 
             await callback.message.answer(
-                "You are not subscribed to the required channels. Please subscribe to continue.",
+                "Для использования бота необходимо подписаться на каналы. Пожалуйста, подпишитесь на каналы ниже:",
                 reply_markup=keyboard
             )
 
@@ -140,12 +140,12 @@ async def callback_done(callback: types.CallbackQuery):
 async def list_users(message: types.Message):
     user_id = message.from_user.id
     if user_id != ADMIN_ID:
-        await message.answer("You don't have permission.")
+        await message.answer("У вас нет прав для использования этой команды.")
         return
 
     users = get_all_users()
     if not users:
-        await message.answer("No user's.")
+        await message.answer("Нет пользователей в базе данных.")
         return
 
     text_lines = []
@@ -158,7 +158,7 @@ async def list_users(message: types.Message):
     full_text = "\n".join(text_lines)
 
     if len(full_text) > 4000:
-        await message.answer("So many information for one message!")
+        await message.answer("Много пользователей, не могу отправить сообщение.")
 
     else:
         await message.answer(full_text)
@@ -171,10 +171,10 @@ async def list_users(message: types.Message):
 @dp.message(Command("messageforall"))
 async def message_all_users(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
-        await message.answer("You are not authorized to use this command.")
+        await message.answer("У вас нет прав для использования этой команды.")
         return
     
-    await message.answer("Please send the message to all users:")
+    await message.answer("Отправьте сообщение всем пользователям:")
     await state.set_state(MessageForAll.waiting_message)
 
 
@@ -185,7 +185,7 @@ async def message_all_users(message: types.Message, state: FSMContext):
 @dp.message(MessageForAll.waiting_message)
 async def send_message_to_all_users(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
-        await message.answer("You are not authorized to use this command.")
+        await message.answer("У вас нет прав для использования этой команды.")
         return
 
     users = get_all_users()
@@ -193,7 +193,7 @@ async def send_message_to_all_users(message: types.Message, state: FSMContext):
     failed = 0
 
     if not users:
-        await message.answer("No users found.")
+        await message.answer("Нет пользователей в базе данных.")
         return
 
     for user in users:
@@ -203,11 +203,11 @@ async def send_message_to_all_users(message: types.Message, state: FSMContext):
             await message.copy_to(chat_id=user_id)
             sent += 1
         except Exception as e:
-            print(f"Error sending message to user {user_id}: {e}")
-            await message.answer(f"Failed to send message to user {user_id}.")
+            print(f"Ошибка при отправке сообщения этому пользователю: {user_id}: {e}")
+            await message.answer(f"Ошибка при отправке сообщения этому пользователю: {user_id}.")
             failed += 1
     
-    await message.answer(f"Message sent to {sent} users.\nFailed to send message to {failed} users.")
+    await message.answer(f"Сообщение отправлено {sent} пользователям, не удалось отправить {failed} пользователям.")
     await state.clear()
 
 
@@ -239,14 +239,14 @@ async def get_video_by_code(message: types.Message):
                     await message.answer_document(file)  # Send the file
 
                 except Exception as e:
-                    print(f"Error sending file: {e}")
-                    await message.answer("An error occurred while sending the video. Please try again later.")
+                    print(f"Ошибка при отправке видео: {e}")
+                    await message.answer("Произошла ошибка при отправке видео. Пожалуйста, попробуйте позже.")
 
             else:
-                await message.answer("The video file could not be found. Please contact the administrator.")
+                await message.answer("Видео не найдено. Пожалуйста, проверьте код фильма и попробуйте снова.")
 
         else:
-            await message.answer("No video found with this code.")
+            await message.answer("Видео не найдено. Пожалуйста, проверьте код фильма и попробуйте снова.")
 
     else:
         channel_number = 1
@@ -267,7 +267,7 @@ async def get_video_by_code(message: types.Message):
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyboards)
 
         await message.answer(
-            "You are not subscribed to the required channels. Please subscribe to continue.",
+            "Для использования бота необходимо подписаться на каналы. Пожалуйста, подпишитесь на каналы ниже:",
             reply_markup=keyboard
         )
 
@@ -279,11 +279,11 @@ async def get_video_by_code(message: types.Message):
 @dp.message(Command("addvideo"))
 async def add_video_command(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
-        await message.answer("You are not authorized to use this command.")
+        await message.answer("У вас нет прав для использования этой команды.")
         return
 
     await state.set_state(AddVideo.waiting_code)
-    await message.answer("Please send the film code:")
+    await message.answer("Отправьте код фильма:")
 
 
 # This function is triggered when the user sends a message with the film code.
@@ -293,7 +293,7 @@ async def add_video_command(message: types.Message, state: FSMContext):
 async def get_video_code(message: types.Message, state: FSMContext):
     await state.update_data(code=message.text)
     await state.set_state(AddVideo.waiting_video)
-    await message.answer("Please send the video file:")
+    await message.answer("Отправьте видео файл:")
 
 
 # This function is triggered when the user sends a video file.
@@ -301,7 +301,7 @@ async def get_video_code(message: types.Message, state: FSMContext):
 @dp.message(AddVideo.waiting_video, F.video)
 async def get_video_file(message: types.Message, state: FSMContext):
     if not message.video:
-        await message.answer("Please send a video file.")
+        await message.answer("Отправьте видео файл.")
         return
     
     data = await state.get_data()
@@ -316,9 +316,9 @@ async def get_video_file(message: types.Message, state: FSMContext):
     result = add_video(code, file_path)
 
     if result:
-        await message.answer("Video added successfully.")
+        await message.answer("Видео успешно добавлено.")
     else:
-        await message.answer("Video with this code already exists.")
+        await message.answer("Видео с таким кодом уже существует.")
     
     await state.clear()
 
