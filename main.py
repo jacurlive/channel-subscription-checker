@@ -2,14 +2,15 @@ import logging
 import asyncio
 import os
 
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import types, F
 from aiogram.types.input_file import FSInputFile
 from aiogram.filters.command import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 
-from config import TOKEN, ADMIN_ID
+from config import ADMIN_ID
+from loader import bot, dp
 from state import AddVideo, MessageForAll
+from utils import is_subscribed, required_channel_list
 from database import init_video_table, add_video, get_video, add_user, init_user_table, get_all_users
 
 
@@ -26,32 +27,10 @@ init_video_table()
 # and create it if it doesn't exist
 init_user_table()
 
-# Initilization of bot and dispatcher
-# The bot token is used to authenticate the bot with Telegram API
-bot = Bot(token=TOKEN)
-dp = Dispatcher(bot=bot)
-
 # List of required channels
 # This list contains the usernames of channels that users must subscribe to
 # before using the bot.
 REQUIRED_CHANNELS = ["@testforbottttttt"]
-
-
-# Subscribtion checker
-# This function checks if a user is subscribed to the required channels.
-# It takes a user ID as a parameter and returns True if the user is subscribed
-# to all required channels, otherwise returns False.
-async def is_subscribed(user_id: int) -> bool:
-    for channel in REQUIRED_CHANNELS:
-        try:
-            member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
-
-            if member.status not in ["member", "administrator", "creator"]:
-                return False
-        except:
-            return False
-
-    return True
 
 
 # Command handler for /start
@@ -64,34 +43,14 @@ async def start(message: types.Message):
     user_id = message.from_user.id
     full_name = message.from_user.full_name
     username = message.from_user.username
-    answer = await is_subscribed(user_id=user_id)
+    answer = await is_subscribed(user_id=user_id, REQUIRED_CHANNELS=REQUIRED_CHANNELS)
     add_user(user_id, full_name, username)
 
     if answer:
         await message.answer(f"Привет {message.from_user.full_name}! Напиши код фильма:")
 
     else:
-        channel_number = 1
-        keyboards = []
-        for channel in REQUIRED_CHANNELS:
-            button = InlineKeyboardButton(
-                text=f"{channel_number}. Kanal",
-                url=f"https://t.me/{channel.lstrip('@')}"
-            )
-            keyboards.append([button])
-            channel_number += 1
-
-        button = InlineKeyboardButton(
-            text="Done",
-            callback_data="done"
-        )
-        keyboards.append([button])
-        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboards)
-
-        await message.answer(
-            "Для использования бота необходимо подписаться на каналы. Пожалуйста, подпишитесь на каналы ниже:",
-            reply_markup=keyboard
-        )
+        await required_channel_list(user_id=user_id, REQUIRED_CHANNELS=REQUIRED_CHANNELS)
 
 
 # Callback handler for "done" button
@@ -102,34 +61,14 @@ async def start(message: types.Message):
 @dp.callback_query()
 async def callback_done(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    answer = await is_subscribed(user_id=user_id)
+    answer = await is_subscribed(user_id=user_id, REQUIRED_CHANNELS=REQUIRED_CHANNELS)
     callback_data = callback.data
 
     if callback_data == "done":
         if answer:
             await callback.message.answer("Напишите код фильма:")
         else:
-            channel_number = 1
-            keyboards = []
-            for channel in REQUIRED_CHANNELS:
-                button = InlineKeyboardButton(
-                    text=f"{channel_number}. Канал",
-                    url=f"https://t.me/{channel.lstrip('@')}"
-                )
-                keyboards.append([button])
-                channel_number += 1
-
-            button = InlineKeyboardButton(
-                text="Потвердить✅",
-                callback_data="done"
-            )
-            keyboards.append([button])
-            keyboard = InlineKeyboardMarkup(inline_keyboard=keyboards)
-
-            await callback.message.answer(
-                "Для использования бота необходимо подписаться на каналы. Пожалуйста, подпишитесь на каналы ниже:",
-                reply_markup=keyboard
-            )
+            await required_channel_list(user_id=user_id, REQUIRED_CHANNELS=REQUIRED_CHANNELS)
 
 
 # This function is triggered when the user sends the /users command.
@@ -223,7 +162,7 @@ async def get_video_by_code(message: types.Message):
     code = message.text
     result = get_video(code)
     user_id = message.from_user.id
-    answer = await is_subscribed(user_id=user_id)
+    answer = await is_subscribed(user_id=user_id, REQUIRED_CHANNELS=REQUIRED_CHANNELS)
 
 
     if answer:
@@ -249,27 +188,7 @@ async def get_video_by_code(message: types.Message):
             await message.answer("Видео не найдено. Пожалуйста, проверьте код фильма и попробуйте снова.")
 
     else:
-        channel_number = 1
-        keyboards = []
-        for channel in REQUIRED_CHANNELS:
-            button = InlineKeyboardButton(
-                text=f"{channel_number}. Kanal",
-                url=f"https://t.me/{channel.lstrip('@')}"
-            )
-            keyboards.append([button])
-            channel_number += 1
-
-        button = InlineKeyboardButton(
-            text="Done",
-            callback_data="done"
-        )
-        keyboards.append([button])
-        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboards)
-
-        await message.answer(
-            "Для использования бота необходимо подписаться на каналы. Пожалуйста, подпишитесь на каналы ниже:",
-            reply_markup=keyboard
-        )
+        await required_channel_list(user_id=user_id, REQUIRED_CHANNELS=REQUIRED_CHANNELS)
 
 
 # This function is triggered when a user sends the /addvideo command.
