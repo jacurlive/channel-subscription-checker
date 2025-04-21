@@ -20,6 +20,9 @@ async def is_subscribed(user_id: int, REQUIRED_CHANNELS: list) -> bool:
     return True
 
 
+# This function sends a message to the user with buttons to subscribe to the required channels.
+# It takes a user ID and a list of required channels as parameters.
+# The buttons will link to the channels, and the user can click them to subscribe.
 async def required_channel_list(user_id: int, REQUIRED_CHANNELS: list):
     channel_number = 1
     keyboards = []
