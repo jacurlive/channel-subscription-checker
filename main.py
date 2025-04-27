@@ -12,7 +12,7 @@ from config import ADMIN_ID
 from loader import bot, dp
 from state import AddVideo, MessageForAll
 from utils import is_subscribed, required_channel_list
-from database import init_video_table, add_video, get_video, add_user, init_user_table, get_all_users
+from database import init_video_table, add_video, get_video, add_user, init_user_table, get_all_users, deactivate_user
 
 
 # Turn on logging.
@@ -113,7 +113,7 @@ async def message_all_users(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         await message.answer("У вас нет прав для использования этой команды.")
         return
-    
+
     await message.answer("Отправьте сообщение всем пользователям:")
     await state.set_state(MessageForAll.waiting_message)
 
@@ -145,8 +145,9 @@ async def send_message_to_all_users(message: types.Message, state: FSMContext):
         except Exception as e:
             print(f"Ошибка при отправке сообщения этому пользователю: {user_id}: {e}")
             await message.answer(f"Ошибка при отправке сообщения этому пользователю: {user_id}.")
+            deactivate_user(user_id)
             failed += 1
-    
+
     await message.answer(f"Сообщение отправлено {sent} пользователям, не удалось отправить {failed} пользователям.")
     await state.clear()
 

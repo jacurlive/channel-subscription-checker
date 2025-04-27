@@ -97,3 +97,13 @@ def get_all_users():
     conn.close()
     
     return users
+
+
+def deactivate_user(user_id):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("UPDATE users SET is_active = 0 WHERE user_id = ?", (user_id,))
+
+    conn.commit()
+    conn.close()
